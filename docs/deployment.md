@@ -8,7 +8,7 @@
   -> 构建 Docker 镜像
   -> 推送 ACR（commit SHA + latest）
   -> SSH 到 ECS
-  -> docker compose pull/up
+  -> docker-compose pull/up
   -> ECS 本机请求 /healthz
 ```
 
@@ -44,10 +44,10 @@
 
 ```bash
 apt-get update
-apt-get install -y docker.io docker-compose-plugin curl
+apt-get install -y docker.io docker-compose curl
 systemctl enable --now docker
 docker --version
-docker compose version
+docker-compose version
 ```
 
 确保 `ECS_SSH_KEY` 对应的公钥已经在 ECS 用户的 `~/.ssh/authorized_keys` 中。当前 MVP 会直接监听 ECS 的 `0.0.0.0:3000`，需要在 ECS 安全组放行 TCP 3000；后续再换成 Nginx/Caddy 反向代理和域名。
@@ -58,13 +58,13 @@ docker compose version
 
 ```bash
 curl --fail http://101.201.101.252:3000/healthz
-docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml ps
+docker-compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml ps
 ```
 
 部署使用 commit SHA 镜像标签，便于回滚。将 `/opt/powu/.env` 中的 `ACR_IMAGE` 改为已知可用的旧 SHA 标签后执行：
 
 ```bash
-docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml pull
-docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml up -d
+docker-compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml pull
+docker-compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml up -d
 curl --fail http://101.201.101.252:3000/healthz
 ```
