@@ -50,14 +50,14 @@ docker --version
 docker compose version
 ```
 
-确保 `ECS_SSH_KEY` 对应的公钥已经在 ECS 用户的 `~/.ssh/authorized_keys` 中。应用端口只绑定到 ECS 的 `127.0.0.1:3000`，公网访问需要后续配置 Nginx/Caddy 反向代理和域名。
+确保 `ECS_SSH_KEY` 对应的公钥已经在 ECS 用户的 `~/.ssh/authorized_keys` 中。当前 MVP 会直接监听 ECS 的 `0.0.0.0:3000`，需要在 ECS 安全组放行 TCP 3000；后续再换成 Nginx/Caddy 反向代理和域名。
 
 ## 验证与回滚
 
 合并到 `main` 后，在 GitHub 的 `Actions -> Deploy` 查看运行结果。成功后，ECS 上的验证命令为：
 
 ```bash
-curl --fail http://127.0.0.1:3000/healthz
+curl --fail http://101.201.101.252:3000/healthz
 docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml ps
 ```
 
@@ -66,5 +66,5 @@ docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml ps
 ```bash
 docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml pull
 docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml up -d
-curl --fail http://127.0.0.1:3000/healthz
+curl --fail http://101.201.101.252:3000/healthz
 ```
