@@ -17,6 +17,48 @@
   -> ECS 本机请求 /healthz
 ```
 
+## 开发与部署流程图
+
+```mermaid
+flowchart LR
+  subgraph DEV[队员]
+    A[拉取最新 main] --> B[创建 feature 分支]
+    B --> C[开发并 push]
+    C --> D[创建 Pull Request]
+  end
+
+  subgraph GH[GitHub]
+    E[CI: npm ci<br/>typecheck<br/>test]
+    F{CI 通过?}
+    G[负责人合并到 main]
+    H[Deploy Action]
+  end
+
+  subgraph ACR[阿里云 ACR]
+    I[构建 Docker 镜像]
+    J[推送 SHA 和 latest 标签]
+  end
+
+  subgraph ECS[阿里云 ECS]
+    K[SSH 上传 Compose 文件]
+    L[docker-compose pull/up]
+    M[/healthz 健康检查]
+    N[公网服务 :3000]
+  end
+
+  D --> E --> F
+  F -->|失败，继续修改| C
+  F -->|通过| G --> H --> I --> J --> K --> L --> M --> N
+```
+
+关键点：
+
+- 提 PR 只触发 CI，不会部署 ECS。
+- PR 合并到 main 后，Deploy Action 自动完成 ACR 推送和 ECS 部署。
+- 合并后不需要再登录 ECS 手动执行 Docker 命令。
+- 队员只需要 GitHub Write 权限，不需要 ECS、ACR 或 SSH 权限。
+- ECS 的 SSH 私钥只保存在 GitHub Actions Secrets 中，由 Deploy Action 使用。
+
 工作流文件是 `.github/workflows/deploy.yml`。它只在 `main` push 或手动触发，并且只有仓库变量 `DEPLOY_ENABLED` 为 `true` 时才会真正部署。
 
 对应文件：
