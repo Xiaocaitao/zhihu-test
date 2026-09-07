@@ -1,0 +1,98 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: build and deploy
+    if: vars.DEPLOY_ENABLED == 'true' && (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    env:
+      ACR_REGISTRY: ${{ secrets.ACR_REGISTRY }}
+      ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
+      ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+      ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+      IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/powu:${{ github.sha }}
+      LATEST_IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/powu:latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Log in to Alibaba Cloud Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ env.ACR_USERNAME }}
+          password: ${{ env.ACR_PASSWORD }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}
+            ${{ env.LATEST_IMAGE }}
+
+      - name: Upload ECS Compose file
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USER }}
+          key: ${{ secrets.ECS_SSH_KEY }}
+          source: deploy/docker-compose.yml
+          target: /opt/powu
+          strip_components: 1
+
+      - name: Update ECS service
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          ACR_REGISTRY: ${{ env.ACR_REGISTRY }}
+          ACR_USERNAME: ${{ env.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
+          ACR_IMAGE: ${{ env.IMAGE }}
+          APP_PORT: 3000
+        with:
+          host: ${{ secrets.ECS_HOST }}
+          username: ${{ secrets.ECS_USER }}
+          key: ${{ secrets.ECS_SSH_KEY }}
+          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,ACR_IMAGE,APP_PORT
+          script_stop: true
+          script: |
+            set -eu
+            install -d -m 755 /opt/powu
+            umask 077
+            printf '%s\n' "ACR_IMAGE=${ACR_IMAGE}" "APP_PORT=${APP_PORT}" > /opt/powu/.env
+            printf '%s' "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" --username "$ACR_USERNAME" --password-stdin
+            docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml pull
+            docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml up -d --remove-orphans
+            for attempt in $(seq 1 20); do
+              if curl --fail --silent http://127.0.0.1:${APP_PORT}/healthz; then
+                exit 0
+              fi
+              sleep 2
+            done
+            docker compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml ps
+            exit 1
