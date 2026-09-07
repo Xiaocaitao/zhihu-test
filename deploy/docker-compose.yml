@@ -1,0 +1,10 @@
+services:
+  powu:
+    image: ${ACR_IMAGE:?ACR_IMAGE is required}
+    container_name: powu
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
