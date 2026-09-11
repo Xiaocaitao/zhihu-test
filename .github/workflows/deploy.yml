@@ -118,9 +118,11 @@ jobs:
               compose() { docker-compose "$@"; }
               # docker-compose 1.29.2 cannot recreate containers created by
               # newer Docker images because it expects the removed
-              # ContainerConfig metadata. Remove only the app container; the
-              # PostgreSQL container and its named volume are left intact.
-              docker rm -f powu >/dev/null 2>&1 || true
+              # ContainerConfig metadata. Remove old containers for only the
+              # powu service; PostgreSQL and its named volume are untouched.
+              for container_id in $(docker ps -aq --filter 'label=com.docker.compose.service=powu'); do
+                docker rm -f "$container_id"
+              done
             fi
             compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml pull
             compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml up -d --remove-orphans
