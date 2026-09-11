@@ -1,5 +1,14 @@
 import { Agent, type AgentTool } from "@earendil-works/pi-agent-core";
-import { getModel, streamSimple, Type, type Model } from "@earendil-works/pi-ai/compat";
+import {
+  createModels,
+  createProvider,
+  envApiKeyAuth,
+  Type,
+  type Model,
+  type MutableModels,
+} from "@earendil-works/pi-ai";
+import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
+import { getModel, streamSimple as builtinStreamSimple } from "@earendil-works/pi-ai/compat";
 import { ZhihuClient } from "../zhihu/client.ts";
 import { createZhihuTools } from "./tools.ts";
 import { routePlanSchema, type RouteAgent, type RoutePlan, type RouteRequest } from "../routes/types.ts";
@@ -27,6 +36,7 @@ type PiRouteAgentOptions = {
   provider?: string;
   modelId?: string;
   apiKey?: string;
+  baseUrl?: string;
 };
 
 export class PiRouteAgent implements RouteAgent {
@@ -34,23 +44,25 @@ export class PiRouteAgent implements RouteAgent {
   private readonly provider: string;
   private readonly modelId: string;
   private readonly apiKey?: string;
+  private readonly baseUrl: string;
 
   constructor(options: PiRouteAgentOptions = {}) {
     this.client = options.client ?? new ZhihuClient();
-    this.provider = options.provider ?? process.env.PI_PROVIDER ?? "openai";
-    this.modelId = options.modelId ?? process.env.PI_MODEL ?? "gpt-4o-mini";
+    this.provider = options.provider ?? process.env.PI_PROVIDER ?? "doubao";
+    this.modelId = options.modelId ?? process.env.PI_MODEL ?? "";
     this.apiKey = options.apiKey ?? process.env.PI_API_KEY;
+    this.baseUrl = options.baseUrl ?? process.env.PI_BASE_URL ?? "https://ark.cn-beijing.volces.com/api/v3";
   }
 
   async generate(input: RouteRequest, signal?: AbortSignal): Promise<RoutePlan> {
     if (!this.apiKey) throw new Error("PI_API_KEY is required");
-    const model = this.resolveModel();
+    const runtime = this.resolveRuntime();
     const agent = new Agent({
-      streamFn: streamSimple,
+      streamFn: runtime.streamFn,
       getApiKey: () => this.apiKey,
       initialState: {
         systemPrompt,
-        model,
+        model: runtime.model,
         tools: [this.createSearchTool()],
         messages: [],
       },
@@ -68,10 +80,27 @@ export class PiRouteAgent implements RouteAgent {
     }
   }
 
-  private resolveModel(): Model<any> {
+  private resolveRuntime(): {
+    model: Model<any>;
+    streamFn: (model: Model<any>, context: Parameters<typeof builtinStreamSimple>[1], options?: Parameters<typeof builtinStreamSimple>[2]) => ReturnType<typeof builtinStreamSimple>;
+  } {
+    if (this.provider === "doubao") {
+      if (!this.modelId.trim()) throw new Error("PI_MODEL is required for doubao");
+      const models = createDoubaoModels(this.modelId, this.baseUrl);
+      const model = models.getModel("doubao", this.modelId);
+      if (!model) throw new Error(`Pi model not found: doubao/${this.modelId}`);
+      return {
+        model,
+        streamFn: (runtimeModel, context, options) => models.streamSimple(runtimeModel, context, {
+          ...options,
+          cacheRetention: "none",
+        }),
+      };
+    }
+
     const model = getModel(this.provider as never, this.modelId as never);
     if (!model) throw new Error(`Pi model not found: ${this.provider}/${this.modelId}`);
-    return model;
+    return { model, streamFn: builtinStreamSimple };
   }
 
   private createSearchTool(): AgentTool {
@@ -95,6 +124,36 @@ export class PiRouteAgent implements RouteAgent {
       },
     };
   }
+}
+
+export function createDoubaoModels(modelId: string, baseUrl = "https://ark.cn-beijing.volces.com/api/v3"): MutableModels {
+  const model: Model<"openai-responses"> = {
+    id: modelId,
+    name: `Doubao ${modelId}`,
+    api: "openai-responses",
+    provider: "doubao",
+    baseUrl,
+    reasoning: false,
+    input: ["text"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 128000,
+    maxTokens: 8192,
+    compat: {
+      supportsDeveloperRole: false,
+      supportsLongCacheRetention: false,
+      supportsStrictMode: false,
+    },
+  };
+  const models = createModels();
+  models.setProvider(createProvider({
+    id: "doubao",
+    name: "Doubao / Volcengine Ark",
+    baseUrl,
+    auth: { apiKey: envApiKeyAuth("Doubao API key", ["PI_API_KEY"]) },
+    models: [model],
+    api: openAIResponsesApi(),
+  }));
+  return models;
 }
 
 function lastAssistantText(agent: Agent): string {

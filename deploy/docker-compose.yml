@@ -30,8 +30,9 @@ services:
       PGDATABASE: powu
       PGUSER: powu
       PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      PI_PROVIDER: ${PI_PROVIDER:-openai}
-      PI_MODEL: ${PI_MODEL:-gpt-4o-mini}
+      PI_PROVIDER: ${PI_PROVIDER:-doubao}
+      PI_MODEL: ${PI_MODEL:?PI_MODEL is required}
+      PI_BASE_URL: ${PI_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}
       PI_API_KEY: ${PI_API_KEY:?PI_API_KEY is required}
       ZHIHU_ACCESS_SECRET: ${ZHIHU_ACCESS_SECRET:?ZHIHU_ACCESS_SECRET is required}
     ports:

@@ -75,15 +75,16 @@ jobs:
           ACR_IMAGE: ${{ env.IMAGE }}
           APP_PORT: 3000
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          PI_PROVIDER: ${{ vars.PI_PROVIDER }}
+          PI_PROVIDER: ${{ vars.PI_PROVIDER || 'doubao' }}
           PI_MODEL: ${{ vars.PI_MODEL }}
+          PI_BASE_URL: ${{ vars.PI_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3' }}
           PI_API_KEY: ${{ secrets.PI_API_KEY }}
           ZHIHU_ACCESS_SECRET: ${{ secrets.ZHIHU_ACCESS_SECRET }}
         with:
           host: ${{ secrets.ECS_HOST }}
           username: ${{ secrets.ECS_USER }}
           key: ${{ secrets.ECS_SSH_KEY }}
-          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,ACR_IMAGE,APP_PORT,POSTGRES_PASSWORD,PI_PROVIDER,PI_MODEL,PI_API_KEY,ZHIHU_ACCESS_SECRET
+          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,ACR_IMAGE,APP_PORT,POSTGRES_PASSWORD,PI_PROVIDER,PI_MODEL,PI_BASE_URL,PI_API_KEY,ZHIHU_ACCESS_SECRET
           script_stop: true
           script: |
             set -eu
@@ -93,8 +94,9 @@ jobs:
               "ACR_IMAGE=${ACR_IMAGE}" \
               "APP_PORT=${APP_PORT}" \
               "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
-              "PI_PROVIDER=${PI_PROVIDER:-openai}" \
-              "PI_MODEL=${PI_MODEL:-gpt-4o-mini}" \
+              "PI_PROVIDER=${PI_PROVIDER:-doubao}" \
+              "PI_MODEL=${PI_MODEL}" \
+              "PI_BASE_URL=${PI_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}" \
               "PI_API_KEY=${PI_API_KEY}" \
               "ZHIHU_ACCESS_SECRET=${ZHIHU_ACCESS_SECRET}" > /opt/powu/.env
             printf '%s' "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" --username "$ACR_USERNAME" --password-stdin

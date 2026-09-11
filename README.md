@@ -44,7 +44,7 @@ npm test
 
 ## 路线 MVP
 
-启动服务前，在 `.env` 中配置 `DATABASE_URL`、`PI_PROVIDER`、`PI_MODEL` 和 `PI_API_KEY`。服务启动时会自动创建所需的两张 PostgreSQL 表。
+启动服务前，在 `.env` 中配置 `DATABASE_URL`、`PI_PROVIDER`、火山方舟 Endpoint ID（`PI_MODEL`）、`PI_API_KEY` 和可选的 `PI_BASE_URL`。服务启动时会自动创建所需的两张 PostgreSQL 表。
 
 ```bash
 npm start

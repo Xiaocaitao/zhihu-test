@@ -91,8 +91,9 @@ flowchart LR
 | Secret | `POSTGRES_PASSWORD` | PostgreSQL 密码，建议使用字母和数字 |
 | Secret | `PI_API_KEY` | Pi 使用的模型提供商 API Key |
 | Secret | `ZHIHU_ACCESS_SECRET` | 知乎开放平台 Access Secret |
-| Variable | `PI_PROVIDER` | 例如 `openai`；留空默认 `openai` |
-| Variable | `PI_MODEL` | 例如 `gpt-4o-mini`；留空默认 `gpt-4o-mini` |
+| Variable | `PI_PROVIDER` | 默认 `doubao` |
+| Variable | `PI_MODEL` | 火山方舟控制台创建的 Endpoint ID，必填 |
+| Variable | `PI_BASE_URL` | 默认 `https://ark.cn-beijing.volces.com/api/v3` |
 
 `POSTGRES_PASSWORD`、`PI_API_KEY` 和 `ZHIHU_ACCESS_SECRET` 只会由 Actions 写入 ECS 的 `/opt/powu/.env`，该文件权限为 `0600`，不会进入 Git 或 Docker 镜像。队员不需要这些密钥，也不需要 ECS 权限。
 
