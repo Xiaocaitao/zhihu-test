@@ -90,10 +90,11 @@ flowchart LR
 |---|---|---|
 | Secret | `POSTGRES_PASSWORD` | PostgreSQL 密码，建议使用字母和数字 |
 | Secret | `PI_API_KEY` | Pi 使用的模型提供商 API Key |
+| Secret | `ZHIHU_ACCESS_SECRET` | 知乎开放平台 Access Secret |
 | Variable | `PI_PROVIDER` | 例如 `openai`；留空默认 `openai` |
 | Variable | `PI_MODEL` | 例如 `gpt-4o-mini`；留空默认 `gpt-4o-mini` |
 
-`POSTGRES_PASSWORD` 和 `PI_API_KEY` 只会由 Actions 写入 ECS 的 `/opt/powu/.env`，该文件权限为 `0600`，不会进入 Git 或 Docker 镜像。队员不需要这些密钥，也不需要 ECS 权限。
+`POSTGRES_PASSWORD`、`PI_API_KEY` 和 `ZHIHU_ACCESS_SECRET` 只会由 Actions 写入 ECS 的 `/opt/powu/.env`，该文件权限为 `0600`，不会进入 Git 或 Docker 镜像。队员不需要这些密钥，也不需要 ECS 权限。
 
 ## 比赛新建仓库
 
@@ -189,8 +190,9 @@ ACR_PASSWORD=<ACR固定密码>
 | `ECS_SSH_KEY` | 能登录 ECS 的 SSH 私钥全文 |
 | `POSTGRES_PASSWORD` | PostgreSQL 密码，建议使用字母和数字 |
 | `PI_API_KEY` | Pi 使用的模型提供商 API Key |
+| `ZHIHU_ACCESS_SECRET` | 知乎开放平台 Access Secret |
 
-私钥、ACR 密码、PostgreSQL 密码和 Pi API Key 只能粘贴到 GitHub Secrets，不能写入代码、Compose、Actions 文件或提交到 Git。`PI_PROVIDER` 和 `PI_MODEL` 是非敏感配置，放在 Actions Variables 中。
+私钥、ACR 密码、PostgreSQL 密码、Pi API Key 和知乎 Access Secret 只能粘贴到 GitHub Secrets，不能写入代码、Compose、Actions 文件或提交到 Git。`PI_PROVIDER` 和 `PI_MODEL` 是非敏感配置，放在 Actions Variables 中。
 
 ## ECS 首次准备
 
@@ -296,7 +298,7 @@ curl http://127.0.0.1:3000/healthz
 [ ] ECS 创建 /opt/powu
 [ ] 安全组放行 TCP 22 和临时 TCP 3000
 [ ] 配置 DEPLOY_ENABLED=true
-[ ] 配置 9 个 GitHub Secrets（包括 `POSTGRES_PASSWORD`、`PI_API_KEY`）
+[ ] 配置 10 个 GitHub Secrets（包括 `POSTGRES_PASSWORD`、`PI_API_KEY`、`ZHIHU_ACCESS_SECRET`）
 [ ] 创建测试 PR，确认 test 通过
 [ ] 合并 main，确认 Deploy 通过
 [ ] 公网访问 http://<ECS公网IP>:3000/healthz

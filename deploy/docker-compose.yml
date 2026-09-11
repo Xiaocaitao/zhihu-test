@@ -33,6 +33,7 @@ services:
       PI_PROVIDER: ${PI_PROVIDER:-openai}
       PI_MODEL: ${PI_MODEL:-gpt-4o-mini}
       PI_API_KEY: ${PI_API_KEY:?PI_API_KEY is required}
+      ZHIHU_ACCESS_SECRET: ${ZHIHU_ACCESS_SECRET:?ZHIHU_ACCESS_SECRET is required}
     ports:
       - "0.0.0.0:${APP_PORT:-3000}:3000"
 
