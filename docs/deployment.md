@@ -82,7 +82,7 @@ flowchart LR
 
 ### Pi 和 PostgreSQL
 
-应用容器使用 Pi Agent 调用 `search_zhihu`，再输出结构化行业画像、能力地图和两周计划。ECS 上的 Compose 会同时启动 `powu` 和 `postgres`，应用通过 PostgreSQL 环境变量连接数据库，首次启动自动建表。
+应用容器使用 Pi Agent 调用 `search_zhihu`，再输出结构化行业画像、能力地图和两周计划。ECS 上的 Compose 会同时启动 `powu` 和 `postgres`，应用通过 PostgreSQL 环境变量连接数据库，首次启动自动建表。由于 ECS 可能无法访问 Docker Hub，Actions 会先把 `postgres:16-alpine` 镜像同步到 ACR，ECS 只从 ACR 拉取镜像。
 
 在 GitHub Actions 中额外配置：
 

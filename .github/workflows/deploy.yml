@@ -20,6 +20,7 @@ jobs:
       ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
       IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/powu:${{ github.sha }}
       LATEST_IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/powu:latest
+      POSTGRES_IMAGE: ${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_NAMESPACE }}/postgres:16-alpine
 
     steps:
       - name: Check out repository
@@ -47,6 +48,16 @@ jobs:
           username: ${{ env.ACR_USERNAME }}
           password: ${{ env.ACR_PASSWORD }}
 
+      - name: Mirror PostgreSQL image to Alibaba Cloud Container Registry
+        run: |
+          if docker manifest inspect "$POSTGRES_IMAGE" >/dev/null 2>&1; then
+            echo "PostgreSQL image already exists in ACR"
+            exit 0
+          fi
+          docker pull postgres:16-alpine
+          docker tag postgres:16-alpine "$POSTGRES_IMAGE"
+          docker push "$POSTGRES_IMAGE"
+
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
@@ -73,6 +84,7 @@ jobs:
           ACR_USERNAME: ${{ env.ACR_USERNAME }}
           ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
           ACR_IMAGE: ${{ env.IMAGE }}
+          POSTGRES_IMAGE: ${{ env.POSTGRES_IMAGE }}
           APP_PORT: 3000
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           PI_PROVIDER: ${{ vars.PI_PROVIDER || 'doubao' }}
@@ -84,13 +96,14 @@ jobs:
           host: ${{ secrets.ECS_HOST }}
           username: ${{ secrets.ECS_USER }}
           key: ${{ secrets.ECS_SSH_KEY }}
-          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,ACR_IMAGE,APP_PORT,POSTGRES_PASSWORD,PI_PROVIDER,PI_MODEL,PI_BASE_URL,PI_API_KEY,ZHIHU_ACCESS_SECRET
+          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,ACR_IMAGE,POSTGRES_IMAGE,APP_PORT,POSTGRES_PASSWORD,PI_PROVIDER,PI_MODEL,PI_BASE_URL,PI_API_KEY,ZHIHU_ACCESS_SECRET
           script: |
             set -eu
             install -d -m 755 /opt/powu
             umask 077
             printf '%s\n' \
               "ACR_IMAGE=${ACR_IMAGE}" \
+              "POSTGRES_IMAGE=${POSTGRES_IMAGE}" \
               "APP_PORT=${APP_PORT}" \
               "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
               "PI_PROVIDER=${PI_PROVIDER:-doubao}" \
