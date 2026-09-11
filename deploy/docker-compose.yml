@@ -1,10 +1,42 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: powu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: powu
+      POSTGRES_USER: powu
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - powu-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U powu -d powu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   powu:
     image: ${ACR_IMAGE:?ACR_IMAGE is required}
     container_name: powu
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       HOST: 0.0.0.0
       PORT: 3000
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: powu
+      PGUSER: powu
+      PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PI_PROVIDER: ${PI_PROVIDER:-doubao}
+      PI_MODEL: ${PI_MODEL:?PI_MODEL is required}
+      PI_BASE_URL: ${PI_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}
+      PI_API_KEY: ${PI_API_KEY:?PI_API_KEY is required}
+      ZHIHU_ACCESS_SECRET: ${ZHIHU_ACCESS_SECRET:?ZHIHU_ACCESS_SECRET is required}
     ports:
       - "0.0.0.0:${APP_PORT:-3000}:3000"
+
+volumes:
+  powu-postgres-data:

@@ -74,22 +74,36 @@ jobs:
           ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
           ACR_IMAGE: ${{ env.IMAGE }}
           APP_PORT: 3000
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          PI_PROVIDER: ${{ vars.PI_PROVIDER || 'doubao' }}
+          PI_MODEL: ${{ vars.PI_MODEL }}
+          PI_BASE_URL: ${{ vars.PI_BASE_URL || 'https://ark.cn-beijing.volces.com/api/v3' }}
+          PI_API_KEY: ${{ secrets.PI_API_KEY }}
+          ZHIHU_ACCESS_SECRET: ${{ secrets.ZHIHU_ACCESS_SECRET }}
         with:
           host: ${{ secrets.ECS_HOST }}
           username: ${{ secrets.ECS_USER }}
           key: ${{ secrets.ECS_SSH_KEY }}
-          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,ACR_IMAGE,APP_PORT
+          envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,ACR_IMAGE,APP_PORT,POSTGRES_PASSWORD,PI_PROVIDER,PI_MODEL,PI_BASE_URL,PI_API_KEY,ZHIHU_ACCESS_SECRET
           script_stop: true
           script: |
             set -eu
             install -d -m 755 /opt/powu
             umask 077
-            printf '%s\n' "ACR_IMAGE=${ACR_IMAGE}" "APP_PORT=${APP_PORT}" > /opt/powu/.env
+            printf '%s\n' \
+              "ACR_IMAGE=${ACR_IMAGE}" \
+              "APP_PORT=${APP_PORT}" \
+              "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
+              "PI_PROVIDER=${PI_PROVIDER:-doubao}" \
+              "PI_MODEL=${PI_MODEL}" \
+              "PI_BASE_URL=${PI_BASE_URL:-https://ark.cn-beijing.volces.com/api/v3}" \
+              "PI_API_KEY=${PI_API_KEY}" \
+              "ZHIHU_ACCESS_SECRET=${ZHIHU_ACCESS_SECRET}" > /opt/powu/.env
             printf '%s' "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" --username "$ACR_USERNAME" --password-stdin
             docker-compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml pull
             docker-compose --env-file /opt/powu/.env -f /opt/powu/docker-compose.yml up -d --remove-orphans
             for attempt in $(seq 1 20); do
-              if curl --fail --silent http://127.0.0.1:${APP_PORT}/healthz; then
+              if curl --fail --silent http://127.0.0.1:${APP_PORT}/readyz; then
                 exit 0
               fi
               sleep 2
