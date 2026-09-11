@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ${POSTGRES_IMAGE:?POSTGRES_IMAGE is required}
     container_name: powu-postgres
     restart: unless-stopped
     environment:
