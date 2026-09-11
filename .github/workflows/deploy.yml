@@ -85,7 +85,6 @@ jobs:
           username: ${{ secrets.ECS_USER }}
           key: ${{ secrets.ECS_SSH_KEY }}
           envs: ACR_REGISTRY,ACR_USERNAME,ACR_PASSWORD,ACR_IMAGE,APP_PORT,POSTGRES_PASSWORD,PI_PROVIDER,PI_MODEL,PI_BASE_URL,PI_API_KEY,ZHIHU_ACCESS_SECRET
-          script_stop: true
           script: |
             set -eu
             install -d -m 755 /opt/powu
