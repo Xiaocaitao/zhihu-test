@@ -14,7 +14,7 @@
   -> 推送 ACR（commit SHA + latest）
   -> SSH 到 ECS
   -> docker-compose pull/up
-  -> ECS 本机请求 /healthz
+  -> ECS 本机请求 /readyz
 ```
 
 ## 开发与部署流程图
@@ -42,13 +42,14 @@ flowchart LR
   subgraph ECS[阿里云 ECS]
     K[SSH 上传 Compose 文件]
     L[docker-compose pull/up]
-    M[/healthz 健康检查]
-    N[公网服务 :3000]
+    M[PostgreSQL 健康检查]
+    N[/readyz 健康检查]
+    O[公网服务 :3000]
   end
 
   D --> E --> F
   F -->|失败，继续修改| C
-  F -->|通过| G --> H --> I --> J --> K --> L --> M --> N
+  F -->|通过| G --> H --> I --> J --> K --> L --> M --> N --> O
 ```
 
 关键点：
@@ -68,13 +69,31 @@ flowchart LR
 | `.github/workflows/ci.yml` | Pull Request 和 `main` 的测试流程 |
 | `.github/workflows/deploy.yml` | 构建镜像、推送 ACR、部署 ECS |
 | `Dockerfile` | 定义应用镜像 |
-| `deploy/docker-compose.yml` | ECS 上的容器启动配置 |
+| `deploy/docker-compose.yml` | ECS 上的应用和 PostgreSQL 容器启动配置 |
 | `docs/PRD.md` | 产品需求文档 |
 
-当前 MVP 提供两个 HTTP 接口：
+当前 MVP 提供以下 HTTP 接口：
 
 - `/`：返回服务运行状态
 - `/healthz`：健康检查，返回 `{"ok":true}`
+- `/readyz`：检查 PostgreSQL 是否可用
+- `POST /api/routes`：调用 Pi 生成职业路线并持久化
+- `GET /api/routes/:id`：查询路线生成结果
+
+### Pi 和 PostgreSQL
+
+应用容器使用 Pi Agent 调用 `search_zhihu`，再输出结构化行业画像、能力地图和两周计划。ECS 上的 Compose 会同时启动 `powu` 和 `postgres`，应用通过 PostgreSQL 环境变量连接数据库，首次启动自动建表。
+
+在 GitHub Actions 中额外配置：
+
+| 类型 | 名称 | 内容 |
+|---|---|---|
+| Secret | `POSTGRES_PASSWORD` | PostgreSQL 密码，建议使用字母和数字 |
+| Secret | `PI_API_KEY` | Pi 使用的模型提供商 API Key |
+| Variable | `PI_PROVIDER` | 例如 `openai`；留空默认 `openai` |
+| Variable | `PI_MODEL` | 例如 `gpt-4o-mini`；留空默认 `gpt-4o-mini` |
+
+`POSTGRES_PASSWORD` 和 `PI_API_KEY` 只会由 Actions 写入 ECS 的 `/opt/powu/.env`，该文件权限为 `0600`，不会进入 Git 或 Docker 镜像。队员不需要这些密钥，也不需要 ECS 权限。
 
 ## 比赛新建仓库
 
@@ -168,8 +187,10 @@ ACR_PASSWORD=<ACR固定密码>
 | `ECS_HOST` | ECS 公网 IP，例如 `<ECS公网IP>` |
 | `ECS_USER` | SSH 用户名，例如 `root` |
 | `ECS_SSH_KEY` | 能登录 ECS 的 SSH 私钥全文 |
+| `POSTGRES_PASSWORD` | PostgreSQL 密码，建议使用字母和数字 |
+| `PI_API_KEY` | Pi 使用的模型提供商 API Key |
 
-私钥、ACR 密码只能粘贴到 GitHub Secrets，不能写入 `.env`、Compose、Actions 文件或提交到 Git。
+私钥、ACR 密码、PostgreSQL 密码和 Pi API Key 只能粘贴到 GitHub Secrets，不能写入代码、Compose、Actions 文件或提交到 Git。`PI_PROVIDER` 和 `PI_MODEL` 是非敏感配置，放在 Actions Variables 中。
 
 ## ECS 首次准备
 
@@ -275,7 +296,7 @@ curl http://127.0.0.1:3000/healthz
 [ ] ECS 创建 /opt/powu
 [ ] 安全组放行 TCP 22 和临时 TCP 3000
 [ ] 配置 DEPLOY_ENABLED=true
-[ ] 配置 7 个 GitHub Secrets
+[ ] 配置 9 个 GitHub Secrets（包括 `POSTGRES_PASSWORD`、`PI_API_KEY`）
 [ ] 创建测试 PR，确认 test 通过
 [ ] 合并 main，确认 Deploy 通过
 [ ] 公网访问 http://<ECS公网IP>:3000/healthz

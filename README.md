@@ -1,6 +1,6 @@
 # 破雾 · 知乎开放平台 Tools
 
-对照 2026-08-31 官方文档，提供 **21 个 TypeScript 工具**，覆盖所有给出具体请求协议的接口，包括 OAuth 授权地址构造。当前是独立工具层，不包含 Pi SDK/MCP 适配、LLM 编排、Web 页面或数据库。
+对照 2026-08-31 官方文档，提供 **21 个 TypeScript 工具**，覆盖所有给出具体请求协议的接口，包括 OAuth 授权地址构造。当前 MVP 使用 Pi Agent 编排知乎搜索，使用 PostgreSQL 保存路线请求和生成结果。
 
 完整 endpoint、参数与限制见 [API 覆盖清单](docs/api-tools.md)。原始产品需求见 [PRD](docs/PRD.md)。
 
@@ -41,6 +41,30 @@ npm run tool -- ask_zhihu '{"model":"zhida-fast-1p5","messages":[{"role":"user",
 npm run typecheck
 npm test
 ```
+
+## 路线 MVP
+
+启动服务前，在 `.env` 中配置 `DATABASE_URL`、`PI_PROVIDER`、`PI_MODEL` 和 `PI_API_KEY`。服务启动时会自动创建所需的两张 PostgreSQL 表。
+
+```bash
+npm start
+```
+
+创建路线：
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/routes \
+  -H 'content-type: application/json' \
+  -d '{"goal":"成为后端开发者","background":"计算机专业大二","profile":{"weekly_hours":10}}'
+```
+
+查询路线：
+
+```bash
+curl http://127.0.0.1:3000/api/routes/<route_id>
+```
+
+请求链路是：HTTP 接口校验请求 → PostgreSQL 保存 processing → Pi 调用 `search_zhihu` → Pi 输出结构化路线 → PostgreSQL 保存 completed；失败时会保存 failed 状态。`/healthz` 用于存活检查，`/readyz` 用于数据库就绪检查。
 
 失败输出 `ok: false` 并使用非零退出码。不自动重试、不自动翻页、不自动轮询或下载结果文件。
 
