@@ -1,4 +1,5 @@
 import { createServer, type Server } from "node:http";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { ZodError } from "zod";
 import { createPool, ensureSchema } from "./db/postgres.ts";
@@ -33,9 +34,15 @@ export function createPowuServer(options: PowuServerOptions = {}): Server {
       return;
     }
 
-    if (path === "/") {
-      response.statusCode = 200;
-      response.end(JSON.stringify({ service: "powu", status: "running" }));
+    if (path === "/" && request.method === "GET") {
+      try {
+        response.setHeader("content-type", "text/html; charset=utf-8");
+        response.statusCode = 200;
+        response.end(await readFile(new URL("../public/index.html", import.meta.url), "utf8"));
+      } catch (error) {
+        console.error("frontend unavailable", error);
+        sendJson(response, 503, { ok: false, error: "frontend_unavailable" });
+      }
       return;
     }
 

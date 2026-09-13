@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY src ./src
+COPY public ./public
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

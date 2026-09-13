@@ -19,6 +19,10 @@ test("health endpoint returns a successful JSON response", async (t) => {
   const response = await fetch(`http://127.0.0.1:${address.port}/healthz`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { ok: true });
+
+  const frontend = await fetch(`http://127.0.0.1:${address.port}/`);
+  assert.equal(frontend.status, 200);
+  assert.match(await frontend.text(), /破雾/);
 });
 
 test("route endpoint validates, generates, and returns a saved route", async (t) => {
